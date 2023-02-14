@@ -1,0 +1,339 @@
+openapi: 3.0.1
+info:
+  title: Private Daily Banking Products Combination Validation API
+  version: 1.0.11
+  description: >-
+    This API provides the basic functionality of order validation. No ordering manipulation (add/remove item) is currently offered.
+  contact:
+    name: Person
+    email: amdocs@nl.abnamro.com
+  x-apiType: 'private'
+servers:
+  - url: https://api-st-iag.nl.eu.abnamro.com/daily-banking/products-combination-validation/v1
+    description: ST server
+  - url: https://api-et-iag.nl.eu.abnamro.com/daily-banking/products-combination-validation/v1
+    description: ET server
+  - url: https://api-pr-iag.nl.eu.abnamro.com/daily-banking/products-combination-validation/v1
+    description: PR server
+paths:
+  /:
+    parameters:
+        - name: Subject-Token-Type
+          in: header
+          required: false
+          description: specifies the authorisation mechanism
+          schema:
+            $ref: '#/components/headers/Subject-Token-Type'
+        - name: Subject-Token
+          in: header
+          required: false
+          description: the consumer application
+          schema:
+            $ref: '#/components/headers/Subject-Token'
+        - name: Consumer-Id
+          in: header
+          required: true
+          description: the consumer application
+          schema:
+            $ref: '#/components/headers/Consumer-Id'
+        - name: Trace-Id
+          in: header
+          required: true
+          description: the consumer application
+          schema:
+            $ref: '#/components/headers/Trace-Id'
+    post:
+      tags:
+        - product-offering
+      operationId: validateProductsCombination
+      summary: validate the content of a products order
+      description: >-
+        For a given set of products, the operation validates the configuration for each product, the eligibility for each product, and the products' coexistence within the same order. The operation could return the proposal or its success could be used to initiate the proposal generation. Currently, only the second option is implemented. \
+          <B>TODO:</B> \
+            if the proposal generation capability is to be used: \
+              - The 'Accept-Language' header must be used for determining the language of the proposition \
+              - a processing flag must be added to indicate if the proposition has to be generated \
+              - the response body must be added to the model of the proposition
+      requestBody:
+        description: "the order details"
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: object
+              required:
+                - customer
+                - orderDetails
+              properties:
+                customer:
+                  $ref: "#/components/schemas/Customer"
+                orderDetails:
+                  $ref: "#/components/schemas/Order"
+            example: 
+              identificationType: BC_ID
+              id: 0002468097531
+      responses:
+        204:
+          description: |
+            eligible
+            ---
+            
+            customer is eligible for the requested offering;\
+              no further content is provided
+        400:
+          description: |
+            not eligible
+            ---
+            
+            returned in one of the situations below; please check the error message for details: 
+              - CUSTOMER_NOT_ELIGIBLE
+                > the customer is not eligible for at least one product within the offering 
+              - CUSTOMER_NOT_FOUND
+                > the customer cannot be found in the operational data 
+              - CUSTOMER_PARAMETERS_MISSING
+                > the customer parameters are insufficient for assessing the eligibility 
+              - PRODUCT_CONFIGURATION_INVALID
+                > the configuration for one or more products is not valid
+              - INSUFFICIENT_DATA
+                > some of the downstream systems do not respond and the validity of the offering cannot be assessed w/o the related data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+        401:
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          description: |
+            "Authorization Error"
+
+            Detailed Error List: 
+            ---
+            - SUBJECT_TOKEN_INVALID
+              > Valid subject-token is required.
+            - SUBJECT_TOKEN_MISSING
+              > The Subject-Token header is required.
+            - SUBJECT_TOKEN_TYPE_INVALID
+              > The Subject-Token-Type header should be 'MSEC'.
+            - SUBJECT_TOKEN_TYPE_MISSING
+              > The Subject-Token-Type header is required.
+          content: 
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+              example:
+                  {
+                   errors: [
+                             {
+                              "code": "SUBJECT_TOKEN_MISSING",
+                              "message": "The Subject Token header is required.",
+                              "traceId": "924bd142-6514-445c-9e01-486820d94263",
+                              "status": 401
+                             }
+                           ]
+                  }
+        403:
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          description: |
+            "Access Forbidden"
+
+            Detailed Error List: 
+            ---
+            - SUBJECT_NOT_ALLOWED
+              > The Subject (End User) is not allowed to use the specific operation.
+          content: 
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ApplicationCustomError"
+              example:
+                  {
+                   errors: [
+                             {
+                              "code": "SUBJECT_NOT_ALLOWED",
+                              "message": "The Subject (End User) is not allowed to use the specific operation.",
+                              "traceId": "6be9522f-ff5f-4932-8243-66c154880a1a",
+                              "status": 403
+                             }
+                           ]
+                  }
+        500:
+          description: >-
+            An unexpected error has occurred. The error has been logged and is
+            being investigated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+components:
+  headers:
+    Subject-Token-Type:
+      description: "Indicates which type of session the user is logged in. Example: MSEC."
+      schema: 
+        type: string
+        enum:
+          - MSEC
+          - ENTERPRISE_TOKEN
+        example: MSEC
+    Subject-Token:
+      description: "Unique token identifying the session of the logged in user."
+      required: true
+      schema: 
+        type: string
+      example: "VGhpcyBpcyBhIG5pY2UgdGV4dCBlbmNvZGVkIGluIEJhc2U2NA=="
+    Consumer-Id:
+      description: "Unique value for consumer application calling the API "
+      required: true
+      schema:
+        type: string
+        example: "DCPB"
+    Trace-Id:
+      description: "Unique end-2-end trace id received from the consumer"
+      required: true
+      schema:
+        type: string
+        example: "16258284-86af-4d65-8cc9-6b4a471f0207"
+  responses:
+    ServerErrors:
+      description: |
+        " Internal server error "
+
+        Detailed Error List:
+        ---
+        - INTERNAL_SERVER_ERROR
+          > Internal server error occurred
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApplicationCustomError'
+          example:
+            {
+              errors: [
+              {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "Internal server error occurred",
+                "traceId": "XX1234",
+                "status": 500
+              }
+              ]
+            }
+  schemas:
+    Customer:
+      type: object
+      description: customer BC ID or party id
+      required: 
+        - "customer"
+      properties:
+        identificationType:
+          description: reveal if customer identification is done based on BC ID or on the Party ID; validations are done always against the BC ID (APC in the Party model)
+          type: string
+          default: BC_ID
+          example: BC_ID
+          enum: 
+            - PARTY_ID
+            - BC_ID
+        customer:
+          description: the customer _for whom_ the product is ordered; in case of bundle then this is the receiver customer for the bundle product offering
+          type: string
+          example: '000123456789'
+      example: 
+        identificationType: BC_ID
+        id: 0002468097531
+    ApplicationCustomError:
+      type: object
+      required: 
+        - "errors"
+      properties:
+        errors:
+          type: array
+          minItems: 1 
+          maxItems: 5
+          description: List of application errors.
+          items:
+            $ref: '#/components/schemas/ErrorItem'
+    ErrorItem:
+      type: object
+      required:
+         - "code"
+         - "message"
+         - "status"
+      properties:
+        status:
+          type: integer
+          description: unique status code identifying the type of the isse. Can be filled with the HTTP status code, for example.
+        code:
+          type: string
+          description: Application internal error code.
+        traceId:
+          type: string
+          description: Application internal error trace Id.
+        message:
+          type: string
+          description: Error message, descriptive for the investigating party. For example for consumer error it should hint where the request could change to get a successful response.
+      description: List of application errors.
+    Order:
+      type: object
+      required:
+        - "orderId"
+        - "products"
+      properties:
+        orderId:
+          description: the identification of the order; this helps subsequent calls to Order Management System APIs
+          type: string
+          example: '7e38036d-1dd3-40c8-94a6-e0e041f11950'
+        products:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/Product'
+    Product:
+      description: full commercial info about the product offering with the given ID
+      type: object
+      required: 
+        - "productId"
+        - "orderingId"
+      properties:
+        productId:
+          description: the product offering identification
+          type: string
+          example: '001249'
+        orderingId:
+          description: unique identifier of the product offer instance within the order (basket)
+          type: string
+          example: 'de15a2d6-5184-497c-b25b-8f2665a4b9aa'
+        parentProductOrderingId:
+          description: a mean to keep the relation between the bundled product and the encapsulating bundle
+          type: string
+          example: '3bb3159a-32a9-4ad8-a463-e895f156d395'
+        beneficiaryCustomer:
+          $ref: '#/components/schemas/Customer'
+        configurationItems:
+          $ref: '#/components/schemas/Configuration'
+    Configuration:
+      description: a collection of configuration items that makes sense (can be addressed) together
+      type: array
+      items:
+        $ref: '#/components/schemas/ConfigurationItem'
+      minItems: 0
+      maxItems: 150
+    ConfigurationItem:
+      type: object
+      required:
+        - itemId
+      properties:
+        itemId:
+          description: the identifier for the configuration item
+          type: string
+          example: 'card.name_on_card'
+        value:
+          description: the value chosen (by customer or by channel) for the current configuration item.
+          type: string
+          example: 'V. Srinivas'
+      example: 
+        itemId: card.colour
+        value: GREEN
+externalDocs:
+  description: please read more about the requirements and solution
+  url: https://confluence.int.abnamro.com/display/GT/Catalog+for+Commerce
