@@ -1,0 +1,523 @@
+openapi: 3.0.1
+info:
+  title: Daily Banking Product API
+  version: 1.0.28
+  description: >-
+    This API provides the basic functions needed in the offering discovery process, such as search product offering, retrieve information about specific product offering or parts of it
+  contact:
+    name: Person
+    email: amdocs@nl.abnamro.com
+  x-apiType: "enterprise"
+servers:
+  - url: https://api-st-iag.nl.eu.abnamro.com/daily-banking/products/v1
+    description: ST server
+  - url: https://api-et-iag.nl.eu.abnamro.com/daily-banking/products/v1
+    description: ET server
+  - url: https://api-pr-iag.nl.eu.abnamro.com/daily-banking/products/v1
+    description: PR server
+paths:
+  /{productId}:
+    parameters:
+      - name: Subject-Token-Type
+        in: header
+        required: false
+        description: specifies the authorisation mechanism
+        schema:
+          $ref: '#/components/headers/Subject-Token-Type'
+      - name: Subject-Token
+        in: header
+        required: false
+        description: the consumer application
+        schema:
+          $ref: '#/components/headers/Subject-Token'
+      - name: Consumer-Id
+        in: header
+        required: true
+        description: the consumer application
+        schema:
+          $ref: '#/components/headers/Consumer-Id'
+      - name: Trace-Id
+        in: header
+        required: true
+        description: the consumer application
+        schema:
+          $ref: '#/components/headers/Trace-Id'
+      - name: Accept-Language
+        in: header
+        description: the consumer application
+        schema:
+          $ref: '#/components/headers/Accept-Language'
+      - $ref: '#/components/parameters/ProductId'
+    get:
+      tags:
+        - product-offering
+      summary: offer handy functions to product discovery and order capture processes to expose product information from the commercial perspective
+      description: >-
+        Part of Enterprise Catalogue, Product Offering stores product offering definition and conditions
+      operationId: getDailyBankingProduct
+      responses:
+        200:
+          description: Full set of product offering terms and conditions
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCommercialInfo'
+        401:
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          description: |
+            "Authorization Error"
+
+            Detailed Error List: 
+            ---
+            - SUBJECT_TOKEN_INVALID
+              > Valid subject-token is required.
+            - SUBJECT_TOKEN_MISSING
+              > The Subject-Token header is required.
+            - SUBJECT_TOKEN_TYPE_INVALID
+              > The Subject-Token-Type header should be 'MSEC'.
+            - SUBJECT_TOKEN_TYPE_MISSING
+              > The Subject-Token-Type header is required.
+          content: 
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+              example:
+                  {
+                   errors: [
+                             {
+                              "code": "SUBJECT_TOKEN_MISSING",
+                              "message": "The Subject Token header is required.",
+                              "traceId": "924bd142-6514-445c-9e01-486820d94263",
+                              "status": 401
+                             }
+                           ]
+                  }
+        403:
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          description: |
+            "Access Forbidden"
+
+            Detailed Error List: 
+            ---
+            - SUBJECT_NOT_ALLOWED
+              > The Subject (End User) is not allowed to use the specific operation.
+          content: 
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ApplicationCustomError"
+              example:
+                  {
+                   errors: [
+                             {
+                              "code": "SUBJECT_NOT_ALLOWED",
+                              "message": "The Subject (End User) is not allowed to use the specific operation.",
+                              "traceId": "6be9522f-ff5f-4932-8243-66c154880a1a",
+                              "status": 403
+                             }
+                           ]
+                  }
+        404:
+          description: |
+            The requested offering was not found in our system.
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+        406:
+          description: |
+            not acceptable. this will not be implemented as the service will always return the Dutch version in case the language requested is not understood or cannot be served
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+        500:
+          description: >-
+            An unexpected error has occurred. The error has been logged and is
+            being investigated.
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+components:
+  responses:
+    ServerErrors:
+      description: |
+        "Server made a Boo-Boo!"
+
+        Detailed Error List:
+        ---
+        - INTERNAL_SERVER_ERROR
+          > Internal server error occurred
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApplicationCustomError'
+          example:
+            {
+              errors: [
+              {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "Internal server error occurred",
+                "traceId": "XX1234",
+                "status": 500
+              }
+              ]
+            }
+  headers:
+    Subject-Token-Type:
+      description: "Indicates which type of session the user is logged in. Example: MSEC."
+      schema: 
+        type: string
+        enum:
+          - MSEC
+          - ENTERPRISE_TOKEN
+        example: MSEC
+    Subject-Token:
+      description: "Unique token identifying the session of the logged in user."
+      required: true
+      schema: 
+        type: string
+      example: "VGhpcyBpcyBhIG5pY2UgdGV4dCBlbmNvZGVkIGluIEJhc2U2NA=="
+    Consumer-Id:
+      description: "Unique value for consumer application calling the API "
+      required: true
+      schema:
+        type: string
+        example: "DCPB"
+    Trace-Id:
+      description: "Unique end-2-end trace id received from the consumer"
+      required: true
+      schema:
+        type: string
+        example: "16258284-86af-4d65-8cc9-6b4a471f0207"
+    Accept-Language:
+      description: |-
+        the list o languages accepted by the consumer; is strongly recommended, otherwise, the default language decided by the backend is provided. If the content is not found in the requested language/s then the content in the 'nl' language is returned for that object(!)
+      schema:
+        type: string
+        example: 'en'
+  parameters:
+    Consumer-Id:
+      in: "header"
+      name: "Consumer-Id"
+      description: |
+        A unique value for consumer applications calling the API
+      required: true
+      schema:
+        type: string
+        example: "DCPB"
+    Trace-Id:
+      name: "Trace-Id"
+      in: header
+      description: |
+        The unique end-2-end trace id received from the consumer
+      required: true
+      schema:
+        type: string
+        example: "16258284-86af-4d65-8cc9-6b4a471f0207"
+    ProductId:
+      name: "productId"
+      in: "path"
+      required: true
+      description: |
+        the identifier of the product offering for which the sales context is requested
+      schema:
+        type: string
+        example: '001294'
+
+  schemas:
+    ApplicationCustomError:
+      type: object
+      required: 
+        - "errors"
+      properties:
+        errors:
+          type: array
+          minItems: 1 
+          maxItems: 5
+          description: |
+            List of application errors.
+          items:
+            $ref: '#/components/schemas/ErrorItem'
+    ErrorItem:
+      type: object
+      required:
+         - "code"
+         - "message"
+         - "status"
+      properties:
+        status:
+          type: integer
+          description: |
+            unique status code identifying the type of issue. Can be filled with the HTTP status code, for example.
+        code:
+          type: string
+          description: |
+            Application internal error code.
+        traceId:
+          type: string
+          description: |
+            Application internal error trace Id.
+        message:
+          type: string
+          description: |
+            Error message, descriptive for the investigating party. For example, for consumer error, it should hint where the request could change to get a successful response.
+      description: List of application errors.
+    ProductBrief:
+      description: |
+        a 360 view of the product offering
+      type: object
+      required: 
+        - "productId"
+      properties:
+        productId:
+          type: string
+          description: unique id of the offering
+          example: "0293853491938"
+        productName:
+          type: string
+          description: |
+            localized name of the offering; could be used in front-end
+          example: "Future Savings"
+        productShortDescription:
+          type: string
+          description: |
+            localized description/short briefing of the offering; could be used in front-end
+          example: "Just a place where to keep your money until your kid starts college"
+        productDocumentationURL:
+          description:  |
+            the location of an electronic document (web page, pdf, etc) containing a detailed description of the product offering and/or its terms and conditions
+          type: string
+          pattern: "url"
+          example: 'https://developer-pr-iag.nl.eu.abnamro.com/rest-standards-and-guidelines/yaml-guidelines/#151'
+    ProductCommercialInfo:
+      description: full commercial info about the product offering with the given ID
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ProductBrief'
+      properties:
+        businessLine:
+          description: |
+            product offering characteristic differentiating based on the business vertical
+          type: string
+          example: RETAIL
+          enum: 
+            - RETAIL
+            - MEES_PIERSON
+            - SMALL_AND_MEDIUM_ENTERPRISES
+            - LARGE_CORPORATES
+            - INTERNATIONAL_BANKING
+        productLine:
+          description: |
+            product offering characteristic differentiating based on the type of the financial service
+          type: string
+          example: SAVINGS
+          enum:
+            - SAVINGS
+            - PAYMENTS
+            - INSURANCES
+            - CASH
+            - CREDITS
+            - SECURITIES
+            - PENSIONS
+            - ADVICES
+            - MONEY_MARKETS
+            - MORTGAGES
+            - LOANS
+        productLineCategory:
+          description: |
+            product offering characteristics differentiating further within a financial service type. each product line could have its own set of categories. e.g. SAVING would split into DEPOSTS, SAVING_ACCOUNTS and SAVING_SERVICES
+          type: string
+          example: SAVING_ACCOUNTS
+        productGroup:
+          description: product offering characteristic used for convenient grouping
+          type: string
+          example: STATEMENTS_AND_REPORTS
+          enum:
+            - PAYMENT_INSTRUMENTS
+            - ACCESS_INSTRUMENTS
+            - STATEMENTS_AND_REPORTS
+            - INSURED_SERVICES
+        usedInCountries:
+          description: |
+            product offering characteristic showing in which countries the product is sold and can be used; matching ISO-3166-1
+            <br><a href="https://www.electoral-vote.com"><img border="0" src="https://w7.pngwing.com/pngs/208/635/png-transparent-map-europe-continent-countries-european-countries-chart-map-of-europe-european-map-digital-drawing-educational-thumbnail.png" alt="Click for www.electoral-vote.com" width="635" height="416" /></a>
+          type: array
+          example: 
+            - NL
+            - BE
+            - LUX
+          minItems: 1
+          maxItems: 150
+          items:
+            type: string
+            pattern: '^[A-Z]{2,3}$'
+        termsAndConditions:
+          description: the conditions bonding from the legal perspective once the product is bought by the customer
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+          minItems: 0
+          maxItems: 350
+        configuration:
+          $ref: '#/components/schemas/Configuration'
+        processingAttributes:
+          type: object
+          required: 
+            - signatureRequiredType
+          properties:
+            signatureRequiredType:
+              description: |
+                what kind of signature is expected from the customer if at all\
+                  - NONE = no signature is required, pushing the "next" or "confirm" button would suffice as proof that the customer wishes the product and accepts the terms & conditions
+                  - DIGITAL_SIMPLE = electronic signature with QR code or e-dentifier
+                  - DIGITAL_SIGNED = electronic signature via an approved signature provider
+                  - ELECTRONIC_COPY = a copy of a hand-signed official paper
+                  - PAPER_ORIGINAL = a hand-signed official paper sent via post or signed in front of a bank employee
+                  - PAPER_COPY = a hand-signed official paper copied by a bank employee (the original is returned to the customer)
+              type: string
+              enum:
+                - NONE
+                - ELECTRONIC_COPY
+                - PAPER_COPY
+                - PAPER_ORIGINAL
+                - DIGITAL_SIMPLE
+                - DIGITAL_SIGNED
+            requestedDocuments:
+              description:  |
+                list of documents to be provided by the customer or actions to be performed by the customer and acknowledged by the financial institution \
+                  the OMS is responsible for making sure that the documents are provided or the steps are performed and the channels are responsible for facilitating the collection of the documents and the performing of the required steps
+              type: array
+              minItems: 1
+              maxItems: 200
+              items:
+                type: object
+                properties:
+                  documentItemId:
+                    description: the id of the item to be collected or step to be performed; used by OMS for corroborating between order and the items provided/perfomed
+                    type: string
+                    format: uuid
+                    example: "7d0113d1-6446-4227-9c02-ece3516bb7e9"
+                  documentItemName:
+                    description: the name of the requested document; a.k.a. the label to be shown to the customer
+                    type: string
+                    example: "copie d'une carte d'identité avec photo"
+    Policy:
+      type: object
+      required: 
+        - "name"
+      properties:
+        name:
+          description: an identifier of the policy; used by channels as a placeholder identifier
+          type: string
+          example: 'conditions.tariff'
+        domain:
+          description: attribute for grouping of terms and conditions per domain that they are addressing
+          type: string
+          enum: 
+            - LEGAL
+            - TARIFF
+            - USAGE
+            - GENERAL
+          example: TARIFF
+        brief:
+          description: >-
+            the text of the policy. while not limited in size this text could be only a summary of the policy and the full text could be attached as a document (see '#components/schemas/Policy/policyDocumentURL') 
+          type: string
+          example: |
+            Betaalrekening:
+              - Openingskosten  € 0
+              - 1e betaalrekening*  € 2,95 per maand
+              - Extra betaalrekening  € 1,40 per maand
+              *Als u geen BasisPakket Betalen of Studenten Pakket heeft.
+        policyDocumentURL:
+          description: the full text of the policy as attached document; could be any media type; this is the translation of the official document into the 'policyLanguage'
+          type: string
+          example: 'https://developer-pr-iag.nl.eu.abnamro.com/rest-standards-and-guidelines/yaml-guidelines/#156'
+        policyOfficialDocumentURL:
+          description: the full text of the policy, in original language, as attached document; this is the official document, refered to in case of litigations
+          example: 'https://confluence.int.abnamro.com/display/EIIE/Approved+Resources'
+          type: string
+    Configuration:
+      description: a collection of configuration items that makes sense (can be addressed) together
+      type: array
+      items:
+        $ref: '#/components/schemas/ConfigurationItem'
+      minItems: 0
+      maxItems: 150
+    ConfigurationItem:
+      description: a topic for which the customer have the option or is required to provide a value, it can be a date (e.g. predicted retirement date) or the IBAN of a rover account. Be advised, those configuration items are strictly related to the product definition and they are used for fulfillment or for offering realization, not necessarily related to user experience or order capture/processing flow
+      type: object
+      required:
+        - itemId
+      properties:
+        itemId:
+          description: the unique identifier within the catalogue of the configuration item
+          type: string
+          example: '54b00880-7516-4173-9aae-36c097a9e21b'
+        itemLabel:
+          description: the label (/question) to be shown to the customer
+          type: string
+          example: "Colour on the card"
+        parentItemId:
+          description: the id of the parent, useful in defining related configuration items
+          type: string
+          example: 'a01cac0a-f47e-4d8b-88f5-053a24be5a09'
+        valueType:
+          description: the type of the value; defines how to interpret the provided value; helps channels in defining the interaction with the user and implementing basic validations
+          type: string
+          default: STRING
+          enum: 
+            - STRING
+            - DATE
+            - NUMBER
+            - INTEGER
+            - CUSTOMER
+            - CONTRACT
+        allowedValues:
+          description: a set of allowed values; all the allowed values must match the data type mentioned in the 'valueType'
+          type: array
+          minItems: 0
+          maxItems: 200
+          items:
+            type: string
+          example: 
+            - NL
+            - BE
+            - LU
+        defaultValue:
+          description: provides a value in case the user does not fill a value her/him-self; if a distinct set of values is allowed then the defualt value *must* be one of the values within the allowed set; its type must match the 'valueType'
+          type: string
+          example: BE
+        isMandatory:
+          description: a flag indicating if the current configuration item requires to return a value for the current product; in other words if the configuration item is mandatory for the fulfillment or ordering process; if a default value is provided for the current configuration item we recommend to keep this as false
+          type: boolean
+          default: false
+      example: 
+        itemId: card.colour
+        valueType: STRING
+        defaultValue: RED
+        allowedValues:
+          - BLUE
+          - GREEN
+          - RED
+        isMandatory: false
+externalDocs:
+  description: please read more about the requirements and solution
+  url: https://confluence.int.abnamro.com/display/GT/Catalog+for+Commerce
