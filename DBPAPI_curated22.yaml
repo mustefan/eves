@@ -1,129 +1,106 @@
 openapi: 3.0.1
 info:
   title: Daily Banking Product API
-  version: 1.0.28
+  version: 1.0.36
   description: >-
     This API provides the basic functions needed in the offering discovery process, such as search product offering, retrieve information about specific product offering or parts of it
   contact:
-    name: Person
+    name: Daily Banking Catalog One Administration
     email: amdocs@nl.abnamro.com
   x-apiType: "enterprise"
 servers:
-  - url: https://api-st-iag.nl.eu.abnamro.com/daily-banking/products/v1
-    description: ST server
-  - url: https://api-et-iag.nl.eu.abnamro.com/daily-banking/products/v1
-    description: ET server
-  - url: https://api-pr-iag.nl.eu.abnamro.com/daily-banking/products/v1
-    description: PR server
+  - url: 'https://aziag-tst.nl.eu.abnamro.com/daily-banking/products/v1'
+    description: ST Environment
+  - url: 'https://aziag-acc.nl.eu.abnamro.com/daily-banking/products/v1'
+    description: ET Environment
+  - url: 'https://aziag-prd.nl.eu.abnamro.com/daily-banking/products/v1'
+    description: PR Environment
 paths:
   /:
     get:
       tags:
         - product-offering
       operationId: getDailyBankingProductList
-      summary: retrieves commercial product offerings based on the search criterion
-      description: |-
-        The operation returns all commercial product offerings that match the given criteria in the input regardless of qualification rules (but qualification can be expressed as a search criterion). For localized information, the operation returns only the entries matching the 'Accept-Language' header or the default language if none is specified.\
-          Filtering values are combined in the OR operation
+      summary: retrieves commercial product offerings based on the search criteria
+      description: |
+        The operation returns all commercial product offerings that match the given criteria in the input regardless of qualification rules (but qualification can be expressed as a search criterion). For localized information, the operation returns only the entries matching the 'Accept-Language' header or the default language if none is specified or no match is found.\
+          Filtering parameters are connected with logical _AND_ while filtering values are combined with the _OR_ operation. Example:
+          
+          - (businessLine is RETAIL _OR_ MEES_PIERSON) _AND_ (productCategory is CASH _OR_ SAVINGS)
       parameters:
         - name: Subject-Token-Type
           in: header
-          required: false
-          description: specifies the authorisation mechanism
-          schema:
-            $ref: '#/components/headers/Subject-Token-Type'
+          description: specifies the authorisation mechanism; copy paste here the description from the type definition
+          schema: 
+            type: string
+            enum:
+              - MSEC
+              - ENTERPRISE_TOKEN
+          example: MSEC
         - name: Subject-Token
           in: header
-          required: false
           description: the consumer application
-          schema:
+          schema: 
             $ref: '#/components/headers/Subject-Token'
         - name: Consumer-Id
           in: header
-          required: true
           description: the consumer application
           schema:
             $ref: '#/components/headers/Consumer-Id'
         - name: Trace-Id
           in: header
-          required: true
-          description: the consumer application
+          description: the id of the request in the consumer application
           schema:
             $ref: '#/components/headers/Trace-Id'
         - name: Accept-Language
           in: header
-          description: the consumer application
+          description: the language preffered by consumer application for the localized content
           schema:
             $ref: '#/components/headers/Accept-Language'
         - name: businessLine
           in: query
-          description: further refinement of the products within given category
+          description: |
+            Parameter that allows filtering of results based on the business vertical that provides/manages the product
           schema:
-            type: string
-            enum:
-              - RETAIL
-              - MEES_PIERSON
-              - SMALL_AND_MEDIUM_ENTERPRISES
-              - LARGE_CORPORATES
-              - INTERNATIONAL_BANKING
+            $ref: '#/components/schemas/BusinessLine'
           style: form
           explode: false
           example: RETAIL
-        - name: productLine
+        - name: productCategory
           in: query
-          description: Basic split of banking products
+          description: |
+            Parameter allowing filtering based on the product category
           schema:
-            type: string
-            enum:
-              - SAVINGS
-              - PAYMENTS
-              - INSURANCES
-              - CASH
-              - CREDITS
-              - SECURITIES
-              - PENSIONS
-              - ADVICES
-              - MONEY_MARKETS
-              - MORTGAGES
-              - LOANS
+            $ref: '#/components/schemas/ProductCategory'
           style: form
           explode: false
           example: SAVINGS
-        - name: productLineCategory
+        - name: productSubCategory
           in: query
-          description: |
-            further split of banking products within the product line; the actual set of values depends on the product line \
-              Be advised, this is not free text. Please check with the Catalogue administration before using it. \
-              For SAVINGS the relevant categories would be: \
-                - COMMERCIAL_CUSTOMIZED_SAVINGS_ACCOUNTS \
-                - COMMERCIAL_STANDARD_SAVINGS_ACCOUNTS \
-                - INVESTMENT_SAVING_ACCOUNTS \
-                - STANDARD_SAVINGS_ACCOUNTS \
-                - CHILDRENS_SAVINGS_ACCOUNTS \
-                - CUSTOMIZED_SAVINGS_ACCOUNTS \
-                - INTERNATIONAL_STANDARD_SAVINGS_ACCOUNTS
-                
-              @TODO:\
-                Add reference documentation about the values and their correlation with the productLine values above and their maintenance process
+          description: |-
+            fine grain filtering of products based on the sub-category; the actual set of values depends on the product line \
+              For SAVINGS category, the relevant sub-categories would be: \
+                  - COMMERCIAL_CUSTOMIZED_SAVINGS_ACCOUNTS \
+                  - COMMERCIAL_STANDARD_SAVINGS_ACCOUNTS \
+                  - INVESTMENT_SAVING_ACCOUNTS \
+                  - STANDARD_SAVINGS_ACCOUNTS \
+                  - CHILDRENS_SAVINGS_ACCOUNTS \
+                  - CUSTOMIZED_SAVINGS_ACCOUNTS \
+                  - INTERNATIONAL_STANDARD_SAVINGS_ACCOUNTS
           schema:
-            type: string
+            $ref: '#/components/schemas/ProductSubCategory'
           style: form
           explode: false
           example: INVESTMENT_SAVING_ACCOUNTS
         - name: productsGroup
           in: query
-          description: >-
-            Banking product grouped by appearance type
+          description: |-
+            Allow filtering of products through logical grouping.
           schema:
-            type: string
-            enum:
-              - PAYMENT_INSTRUMENTS
-              - SAVINGS_ACCOUNTS
-              - ACCESS_INSTRUMENTS
-              - STATEMENTS_AND_REPORTS
-              - INSURED_SERVICES
+            $ref: '#/components/schemas/ProductGroup'
           style: form
           explode: false
+          example: ADVISORY_OTHER
         - name: country
           in: query
           description: >-
@@ -133,6 +110,7 @@ paths:
             pattern: '[A-Z]{3}'
           style: form
           explode: false
+          example: NL
         - name: "customerId"
           description: >-
             non-mandatory parameter; if known then the result will be filtered to match only product offering for which the given customer is eligible
@@ -242,25 +220,25 @@ paths:
     parameters:
       - name: Subject-Token-Type
         in: header
-        required: false
         description: specifies the authorisation mechanism
         schema:
-          $ref: '#/components/headers/Subject-Token-Type'
+          type: string
+          enum:
+            - MSEC
+            - ENTERPRISE_TOKEN
+        example: MSEC
       - name: Subject-Token
         in: header
-        required: false
-        description: the consumer application
-        schema:
+        description: the consumer's security token
+        schema: 
           $ref: '#/components/headers/Subject-Token'
       - name: Consumer-Id
         in: header
-        required: true
         description: the consumer application
         schema:
           $ref: '#/components/headers/Consumer-Id'
       - name: Trace-Id
         in: header
-        required: true
         description: the consumer application
         schema:
           $ref: '#/components/headers/Trace-Id'
@@ -273,9 +251,9 @@ paths:
     get:
       tags:
         - product-offering
-      summary: offer handy functions to product discovery and order capture processes to expose product information from the commercial perspective
+      summary: provides commercial information about product offering
       description: >-
-        Part of Enterprise Catalogue, Product Offering stores product offering definition and conditions
+        This operation exposes commercial information and configuration parameters about a product offering. The information is used to be provided to the  customers in product browsing and order capture processes.
       operationId: getDailyBankingProduct
       responses:
         200:
@@ -380,25 +358,25 @@ paths:
     parameters:
       - name: Subject-Token-Type
         in: header
-        required: false
         description: specifies the authorisation mechanism
-        schema:
-          $ref: '#/components/headers/Subject-Token-Type'
+        schema: 
+          type: string
+          enum:
+            - MSEC
+            - ENTERPRISE_TOKEN
+        example: MSEC
       - name: Subject-Token
         in: header
-        required: false
-        description: the consumer application
-        schema:
+        description: the consumer's security token
+        schema: 
           $ref: '#/components/headers/Subject-Token'
       - name: Consumer-Id
         in: header
-        required: true
         description: the consumer application
         schema:
           $ref: '#/components/headers/Consumer-Id'
       - name: Trace-Id
         in: header
-        required: true
         description: the consumer application
         schema:
           $ref: '#/components/headers/Trace-Id'
@@ -406,10 +384,10 @@ paths:
     get:
       tags:
         - product-offering
-      summary: exposes fulfillment attributes
+      summary: provides fulfillment information to order management systems
       description: >-
-        provides to order management system with the structure of attributes needed for fulfilment process per product engine
-      operationId: getDailyBankingProductFulfillmentAttributes
+        provides the order management system with the structure of attributes needed for fulfilment process per product engine
+      operationId: getDailyBankingProductFulfillment
       responses:
         200:
           description: Full set of fulfilment needed attributes split per backend adminstration (product engine)
@@ -502,25 +480,25 @@ paths:
     parameters:
       - name: Subject-Token-Type
         in: header
-        required: false
         description: specifies the authorisation mechanism
-        schema:
-          $ref: '#/components/headers/Subject-Token-Type'
+        schema: 
+          type: string
+          enum:
+            - MSEC
+            - ENTERPRISE_TOKEN
+        example: MSEC
       - name: Subject-Token
         in: header
-        required: false
-        description: the consumer application
-        schema:
+        description: the consumer's security token
+        schema: 
           $ref: '#/components/headers/Subject-Token'
       - name: Consumer-Id
         in: header
-        required: true
         description: the consumer application
         schema:
           $ref: '#/components/headers/Consumer-Id'
       - name: Trace-Id
         in: header
-        required: true
         description: the consumer application
         schema:
           $ref: '#/components/headers/Trace-Id'
@@ -646,25 +624,25 @@ paths:
     parameters:
       - name: Subject-Token-Type
         in: header
-        required: false
         description: specifies the authorisation mechanism
-        schema:
-          $ref: '#/components/headers/Subject-Token-Type'
+        schema: 
+          type: string
+          enum:
+            - MSEC
+            - ENTERPRISE_TOKEN
+        example: MSEC
       - name: Subject-Token
         in: header
-        required: false
-        description: the consumer application
-        schema:
+        description: the consumer's security token
+        schema: 
           $ref: '#/components/headers/Subject-Token'
       - name: Consumer-Id
         in: header
-        required: true
         description: the consumer application
         schema:
           $ref: '#/components/headers/Consumer-Id'
       - name: Trace-Id
         in: header
-        required: true
         description: the consumer application
         schema:
           $ref: '#/components/headers/Trace-Id'
@@ -817,29 +795,21 @@ components:
               ]
             }
   headers:
-    Subject-Token-Type:
-      description: "Indicates which type of session the user is logged in. Example: MSEC."
-      schema: 
-        type: string
-        enum:
-          - MSEC
-          - ENTERPRISE_TOKEN
-        example: MSEC
     Subject-Token:
-      description: "Unique token identifying the session of the logged in user."
-      required: true
+      description: the consumer security token
+      required: false
       schema: 
         type: string
       example: "VGhpcyBpcyBhIG5pY2UgdGV4dCBlbmNvZGVkIGluIEJhc2U2NA=="
     Consumer-Id:
       description: "Unique value for consumer application calling the API "
-      required: true
+      required: false
       schema:
         type: string
         example: "DCPB"
     Trace-Id:
       description: "Unique end-2-end trace id received from the consumer"
-      required: true
+      required: false
       schema:
         type: string
         example: "16258284-86af-4d65-8cc9-6b4a471f0207"
@@ -850,24 +820,6 @@ components:
         type: string
         example: 'en'
   parameters:
-    Consumer-Id:
-      in: "header"
-      name: "Consumer-Id"
-      description: |
-        A unique value for consumer applications calling the API
-      required: true
-      schema:
-        type: string
-        example: "DCPB"
-    Trace-Id:
-      name: "Trace-Id"
-      in: header
-      description: |
-        The unique end-2-end trace id received from the consumer
-      required: true
-      schema:
-        type: string
-        example: "16258284-86af-4d65-8cc9-6b4a471f0207"
     ProductId:
       name: "productId"
       in: "path"
@@ -877,7 +829,6 @@ components:
       schema:
         type: string
         example: '001294'
-
   schemas:
     Customer:
       type: object
@@ -1045,57 +996,397 @@ components:
           type: string
           pattern: "url"
           example: 'https://developer-pr-iag.nl.eu.abnamro.com/rest-standards-and-guidelines/yaml-guidelines/#151'
+    BusinessLine:
+      type: string
+      description: |
+        Organisation unit that has the special purpose to service and support a specific customer segment or function. A product offering characteristic differentiating based on the business vertical.
+      enum:
+        - RETAIL
+        - MEES_PIERSON
+        - SMALL_AND_MEDIUM_ENTERPRISES
+        - LARGE_CORPORATES
+        - INTERNATIONAL_BANKING
+    ProductCategory:
+      description: |
+        Classification that distinguishes between different categories of financial products according to their characteristics.
+      type: string
+      example: SAVINGS
+      enum:
+        - APPLICATION_AND_APIS
+        - BUNDLES
+        - CASH
+        - CLEARING
+        - CREDITS
+        - FINANCIAL_ADVICE
+        - INSURANCES
+        - INVESTMENTS
+        - MARKETS
+        - MORTGAGES
+        - NON_FINANCIAL_SERVICES
+        - PAYMENTS
+        - PENSIONS
+        - SAVINGS
+        - TRADE_FINANCE
+    ProductSubCategory:
+      description: |
+        the next level in the product tree that contains a breakdown of the highest level of enterprise-wide recognizable products that will be recognised at a statutory and regulatory reporting level.
+      type: string
+      enum: 
+        - ADVICE_SERVICES
+        - ADVISORY
+        - APIS
+        - BANKING_AS_A_SERVICE
+        - BUILD_UP_PENSION
+        - BUNDLES
+        - CASH_POOLING
+        - CASH_SOLUTIONS
+        - COLLATERAL_ACCOUNTS
+        - CONTINGENT_LIABILITIES
+        - CORPORATE_LENDING
+        - CREDIT_CARDS
+        - CURRENT_ACCOUNT_CREDITS
+        - CUSTOMISED_CONSUMER_LOANS
+        - DEBT_CAPITAL_MARKETS
+        - DEPOSIT_ACCOUNTS
+        - DISCRETIONARY_PORTFOLIO_MANAGEMENT
+        - DOCUMENTARY_COLLECTION
+        - ELECTONIC_IDENTIFICATION
+        - ELECTRONIC_CHANNELS
+        - EQUITY_CAPITAL_MARKETS
+        - EQUITY_PRODUCTS
+        - EXECUTION_ONLY
+        - EXECUTION_SERVICES
+        - EXTERNAL_MANAGEMENT
+        - FINANCIAL_OVERVIEWS
+        - FINANCING_SERVICES
+        - FIXED_INCOME_PRODUCTS
+        - FIXED_TERM_DEPOSITS
+        - FUNDING_PRODUCTS
+        - GUARANTEES
+        - INVESTMENT_ACCOUNTS
+        - LEASE
+        - LETTER_OF_CREDIT
+        - LIFE_INSURANCES
+        - MERGERS_AND_ACQUISITION_ADVISORY
+        - MORTGAGE_LOANS
+        - MORTGAGE_SERVICES
+        - MORTGAGES_NWE
+        - NON_LIFE_INSURANCES
+        - OFF_BALANCE_SHEET_INSTRUMENTS
+        - OPEN_CHANNELS
+        - OVERDRAFT_FACILITY_ACCOUNTS
+        - PAYMENT_ACCOUNTS
+        - PAYMENT_ACQUIRING
+        - PAYMENT_CARDS
+        - PAYMENT_SERVICES
+        - PAYMENT_TYPE
+        - PAY_OUT_PENSION
+        - PORTFOLIO_ADVANCE_RATE
+        - REAL_ESTATE
+        - REAL_ESTATE_LOANS
+        - REIMBURSEMENTS
+        - RISK_MANAGEMENT_PRODUCTS
+        - SAVINGS_ACCOUNTS
+        - SAVINGS_SERVICES
+        - SETTLEMENT_AND_ASSET_SERVICES
+        - SOLUTION_SERVICES
+        - STANDARDISED_CONSUMER_LOANS
+        - SUPPLIER_CREDITS
+        - TIKKIE
+        - WEALTH_SOLUTIONS      
+    ProductGroup:
+      description:  |
+        Products connected based on their characteristics and the market needs they address. Collection of products that together form one logical group. One product can be part of multiple logical groups
+      type: string
+      enum:
+        - ACCEPTGIRO
+        - ACCESS_DIRECT
+        - ACCESS_ONLINE
+        - ACCIDENT_INSURANCES
+        - ACCOUNTS_APIS
+        - ACTIVE_ADVICE
+        - ADMINISTRATIVE_SOLUTIONS
+        - ADVANCE_ON_EXPORT_SHIPMENT_DOCUMENTS
+        - ADVANCE_PAYMENT_ON_COMMITTED_DRAFTS
+        - ADVISORY
+        - ADVISORY_OTHER
+        - ANNUAL_TRAVEL_INSURANCES
+        - ANNUITY_REDUCTION
+        - BANK_GUARANTEE
+        - BRIDGING_LOANS
+        - BUNDLES
+        - BUY_SIDE
+        - CAR_INSURANCES
+        - CARD_WITH_INSTALLMENT_FACILITY
+        - CASH_FINANCING
+        - CASH_TRADING_ACCOUNT
+        - CASH_TRANSACTIONS
+        - CHEQUES
+        - CHILDREN_PAYMENT_ACCOUNTS
+        - CHILDRENS_SAVINGS_ACCOUNTS
+        - COMFORT_ADVICE
+        - COMMERCIAL_CREDIT_CARDS
+        - COMMERCIAL_CREDITS
+        - COMMERCIAL_CUSTOMIZED_ACCOUNTS
+        - COMMERCIAL_CUSTOMIZED_DEPOSIT_ACCOUNTS
+        - COMMERCIAL_CUSTOMIZED_SAVINGS_ACCOUNTS
+        - COMMERCIAL_DEBIT_CARDS
+        - COMMERCIAL_REAL_ESTATE_LOANS
+        - COMMERCIAL_STANDARD_ACCOUNTS
+        - COMMERCIAL_STANDARD_DEPOSIT_ACCOUNTS
+        - COMMERCIAL_STANDARD_SAVINGS_ACCOUNTS
+        - COMMODITIES
+        - COMMODITY_BROKERAGE
+        - CONSUMER_CREDIT_CARDS
+        - CONSUMER_CUSTOMIZED_PAYMENT_ACCOUNTS
+        - CONSUMER_DEBIT_CARDS
+        - CONSUMER_PREPAID_CARDS
+        - CONSUMER_STANDARD_PAYMENT_ACCOUNTS
+        - CONTINGENT_LIABILITIES
+        - CORPORATE_ACTIONS
+        - CORPORATE_BROKING
+        - CORPORATE_REAL_ESTATE_LOANS
+        - CREDIT_BROKERAGE
+        - CREDIT_COOPERATION_PROGRAMMES
+        - CREDIT_FACILITY
+        - CREDITS_NEXT_TO_THE_ACCOUNT_NON_REVOLVING
+        - CREDITS_NEXT_TO_THE_ACCOUNT_REVOLVING
+        - CREDITS_ON_THE_ACCOUNT
+        - CROSS_BORDER
+        - CUSTODY
+        - CUSTOMIZED_ADVICE
+        - CUSTOMIZED_CASH_POOLING
+        - CUSTOMIZED_PAYMENT_ACCOUNTS
+        - CUSTOMIZED_PRICING_CONTRACTS
+        - CUSTOMIZED_SAVINGS_ACCOUNTS
+        - DEBIT_CARD_ACQUIRING
+        - DEBT_CAPITAL_MARKETS_LOANS
+        - DEPOSITS
+        - DEPOSITS_AND_WITHDRAWALS
+        - DERIVATIVES_CLEARING
+        - DIRECT_REAL_ESTATE
+        - DISABILITY_INSURANCES
+        - DISCRETIONARY_PORTFOLIO_MANAGEMENT
+        - DOMESTIC
+        - DOMESTIC_DIRECT_DEBIT
+        - DPM_CLASSIC_MANDATES
+        - DPM_COIN_MANDATES
+        - DPM_ETF_MANDATES
+        - DPM_IMPACT_MANDATES
+        - DPM_MULTI_MANAGER_MANDATES
+        - DPM_PEA_MANDATES
+        - DPM_SPECIAL_MANDATES
+        - DPM_SUSTAINABLE_MANDATES
+        - EBICS
+        - ENDOWMENT_INSURANCE_ANNUITY
+        - ENDOWMENT_INSURANCES
+        - EQUIPMENT_LEASE
+        - EQUIPMENT_LOANS
+        - EQUITIES
+        - EQUITY_CAPITAL_MARKETS
+        - ESTATE_PLANNING
+        - EXCHANGE
+        - EXECUTION_ONLY
+        - EXIT_PORTFOLIO
+        - EXPORT_COLLECTION
+        - EXPORT_LETTER_OF_CREDIT
+        - EXTERNAL_ASSET_MANAGEMENT
+        - EXTERNAL_MANAGEMENT
+        - EXTRADEAL
+        - FIXED_INCOME
+        - FIXPLUS
+        - FOREIGN_CURRENCY_CURRENT_ACCOUNTS
+        - FOREIGN_EXCHANGE
+        - FUND_ADVICE
+        - FUNERAL_INSURANCES
+        - GENERAL_LENINGVOORWAARDEN
+        - GLOBAL_CASH_CLEARING
+        - GLOBAL_EXECUTION_SERVICES
+        - GREEN_FIXED_TERM_DEPOSIT
+        - GUIDED_PROFILE_FUNDS
+        - HEALTH_INSURANCES
+        - HIRE_PURCHASE
+        - HOME_CONTENT_INSURANCES
+        - HOME_INSURANCES
+        - HR_SOLUTIONS
+        - IDIN
+        - IMPORT_COLLECTION
+        - IMPORT_LETTER_OF_CREDIT
+        - INCOME_AND_WEALTH_PLANNING
+        - INDEPENDENT_ASSET_MANAGEMENT
+        - INDIRECT_REAL_ESTATE
+        - INSTALLMENT_FACILITY
+        - INTERCOMPANY_PAYMENTS
+        - INTEREST_ONLY_AFLOSSINGSVRIJ
+        - INTEREST_ONLY_KREDIET
+        - INTEREST_RATES
+        - INTERNATIONAL_CORPORATE_COLLATERAL_ACCOUNTS
+        - INTERNATIONAL_CORPORATE_CREDIT_ACCOUNTS
+        - INTERNATIONAL_CORPORATE_PAYMENT_ACCOUNTS
+        - INTERNATIONAL_DEPOSIT
+        - INTERNATIONAL_DEPOSIT_ACCOUNTS
+        - INTERNATIONAL_INVESTMENT_ACCOUNTS
+        - INTERNATIONAL_PRIVATE_CREDIT_ACCOUNTS
+        - INTERNATIONAL_PRIVATE_PAYMENT_ACCOUNTS
+        - INTERNATIONAL_STANDARD_SAVINGS_ACCOUNTS
+        - INTERNET_BANKING
+        - INVENTORY_FINANCE
+        - INVESTMENT_BELEGGERSREKENING
+        - INVESTMENT_HYBRIDE
+        - INVESTMENT_LEVEN
+        - INVESTMENT_ADVICE
+        - INVESTMENT_SAVING_ACCOUNTS
+        - LEASE_COOPERATION_PROGRAMMES
+        - LEGAL_ASSISTANCE_INSURANCES
+        - LEGAL_SOLUTIONS
+        - LEVEL_PAYMENT_MORTGAGES
+        - LIABILITY_INSURANCES
+        - LIFE_INSURANCE
+        - LOMBARD_CREDITS
+        - MARGIN_AND_COLLATERAL_FINANCING
+        - MATCHMAKING
+        - MEDICAL_PAYMENT_ACCOUNTS
+        - MONEY_MARKETS
+        - MORTGAGE_ADVICE
+        - MORTGAGE_CONTINUITY_INSURANCES
+        - MORTGAGE_EXECUTION
+        - NETWORKING_SOLUTIONS
+        - NON_REVOLVING_CUSTOMISED_LOANS
+        - NON_REVOLVING_STANDARDISED_LOANS
+        - NOTIONAL_POOLING
+        - OF_BALANCE_SHEET_INSTRUMENTS
+        - ONLINE_PAYMENT_SOLUTIONS
+        - OTHER
+        - OVERDRAFT_FACILITY
+        - OVERDRAFTS
+        - OVER_THE_COUNTER_PRODUCTS
+        - PAYMENT_ALERTS
+        - PSD_TWO_APIS
+        - PENSION_INVESTMENT_ACCOUNTS
+        - PENSION_PAY_OUT_ACCOUNTS
+        - PENSION_SAVING_ACCOUNTS
+        - PERSONAL_FINANCE_MANAGEMENT
+        - PHILANTHROPY_ADVICE
+        - PIN_SAVINGS
+        - PORTFOLIO_ADVANCE_RATE
+        - PRIVATE_EQUITY_ADVICE
+        - PRODUCT_BASED_ADVICE
+        - PUBLIC_SECTOR
+        - RECEIVABLE_FINANCE
+        - RECREATION_INSURANCES
+        - REDEMPTION_ANUALITY
+        - REDEMPTION_LINEAIR
+        - REIMBURSEMENT_AUTHORISATIONS_RECEIVED
+        - REPO_AND_REVERSE_REPO
+        - RESIDENTIAL_REAL_ESTATE_LOANS
+        - REVERSED_MORTGAGES_OPEET
+        - REVOLVING_LOANS_BLOCKED_WITHDRAWAL
+        - REVOLVING_STANDARDISED_LOANS
+        - ROLLOVER_LOANS
+        - SAFEKEEPING
+        - SAFETY_DEPOSIT_BOX
+        - SAVINGS_LOANS_SPAAR
+        - SECURITIES_CLEARING
+        - SECURITIES_FINANCE
+        - SECURITIES_FINANCING
+        - SECURITY_SOLUTIONS
+        - SELF_DIRECTED
+        - SELL_SIDE
+        - SEPA
+        - SERVICE_PRODUCTS
+        - SETTLEMENTS
+        - SPECIAL_FIXED_TERM_DEPOSIT
+        - SPECIALIZED_CLEARING_SERVICES
+        - SPECIFIC_FUNDING
+        - STANDARD_FIXED_TERM_DEPOSIT
+        - STANDARD_SAVINGS_ACCOUNTS
+        - STAND_BY_SERVICE
+        - STANDING_ORDERS
+        - STATE_GUARANTEED_LOANS
+        - STATEMENTS
+        - STRATEGIC_ADVICES
+        - STUDENT_INSURANCES
+        - STUDENT_PAYMENT_ACCOUNTS
+        - SUSTAINABILITY_SOLUTIONS
+        - SUSTAINABLE_ADVICE
+        - SWIFT
+        - TARGET_BALANCING
+        - TAX_RECLAIM
+        - TERM_LIFE_INSURANCES
+        - TERM_LOANS
+        - TERMINAL_PAYMENT_SOLUTIONS
+        - THIRD_PARTY_OFFERING
+        - TIKKIE_CONSUMER
+        - TRANSACTION_INITATION_APIS
+        - TRANSFER_SERVICE
+        - TRAVEL_SHORT_TERM_INSURANCES
+        - TREASURY_TRANSACTIONS
+        - TRIP_CANCELLATION_INSURANCES
+        - URGENT_PAYMENTS
+        - VALUABLES_INSURANCES
+        - VEHICLE_INSURANCES
+        - VMC_DPM_INCOME_MANDATES
+        - WALLET
+        - WEALTH_STRUCTURING
+        - WEARABLE
+        - WITHDRAWALS      
     ProductCommercialInfo:
       description: full commercial info about the product offering with the given ID
       type: object
       allOf:
         - $ref: '#/components/schemas/ProductBrief'
       properties:
-        businessLine:
+        businessLines:
           description: |
-            product offering characteristic differentiating based on the business vertical
-          type: string
-          example: RETAIL
-          enum: 
-            - RETAIL
-            - MEES_PIERSON
-            - SMALL_AND_MEDIUM_ENTERPRISES
-            - LARGE_CORPORATES
-            - INTERNATIONAL_BANKING
-        productLine:
+            the business lines for which the product is available
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/BusinessLine'
+          example:
+          - RETAIL
+          - MEES_PIERSON
+        productCategories:
           description: |
-            product offering characteristic differentiating based on the type of the financial service
-          type: string
-          example: SAVINGS
-          enum:
-            - SAVINGS
-            - PAYMENTS
-            - INSURANCES
-            - CASH
+            the list of level 1 categories where the product lies in the products tree
+          type: array
+          minItems: 1
+          maxItems: 15
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ProductCategory'
+          example: 
             - CREDITS
-            - SECURITIES
-            - PENSIONS
-            - ADVICES
-            - MONEY_MARKETS
-            - MORTGAGES
-            - LOANS
-        productLineCategory:
-          description: |
-            product offering characteristics differentiating further within a financial service type. each product line could have its own set of categories. e.g. SAVING would split into DEPOSTS, SAVING_ACCOUNTS and SAVING_SERVICES
-          type: string
-          example: SAVING_ACCOUNTS
-        productGroup:
-          description: product offering characteristic used for convenient grouping
-          type: string
-          example: STATEMENTS_AND_REPORTS
-          enum:
-            - PAYMENT_INSTRUMENTS
-            - ACCESS_INSTRUMENTS
-            - STATEMENTS_AND_REPORTS
-            - INSURED_SERVICES
+            - FINANCIAL_ADVICE
+        productSubCategories:
+          description: the list of level 2 categories (sub-categories) where the product lies
+          type: array
+          minItems: 1
+          maxItems: 65
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ProductSubCategory'
+          example: 
+            - ADVICE_SERVICES
+            - BANKING_AS_A_SERVICE
+            - FINANCING_SERVICES
+        productGroups:
+          description: the list of logical groups that the current product is part of
+          type: array
+          minItems: 1
+          maxItems: 250
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ProductGroup'
+          example: 
+            - ACTIVE_ADVICE
+            - COMFORT_ADVICE
+            - CUSTOMIZED_ADVICE
         usedInCountries:
           description: |
-            product offering characteristic showing in which countries the product is sold and can be used; matching ISO-3166-1
+            the list of countries the product is sold and can be used; matching ISO-3166-1
             <br><a href="https://www.electoral-vote.com"><img border="0" src="https://w7.pngwing.com/pngs/208/635/png-transparent-map-europe-continent-countries-european-countries-chart-map-of-europe-european-map-digital-drawing-educational-thumbnail.png" alt="Click for www.electoral-vote.com" width="635" height="416" /></a>
           type: array
           example: 
@@ -1127,19 +1418,15 @@ components:
           description: |
             what kind of signature is expected from the customer if at all\
               - NONE = no signature is required, pushing the "next" or "confirm" button would suffice as proof that the customer wishes the product and accepts the terms & conditions
-              - DIGITAL_SIMPLE = electronic signature with QR code or e-dentifier
-              - DIGITAL_SIGNED = electronic signature via an approved signature provider
-              - ELECTRONIC_COPY = a copy of a hand-signed official paper
-              - PAPER_ORIGINAL = a hand-signed official paper sent via post or signed in front of a bank employee
-              - PAPER_COPY = a hand-signed official paper copied by a bank employee (the original is returned to the customer)
+              - NON_REMOTE = a hand-signed official paper witnessed by a bank employee
+              - REMOTE = a copy of a hand-signed official paper
+              - DIGITAL = electronic signature with QR code or e-dentifier, facilitated by ABN or  via an approved electronic signature provider
           type: string
           enum:
             - NONE
-            - ELECTRONIC_COPY
-            - PAPER_COPY
-            - PAPER_ORIGINAL
-            - DIGITAL_SIMPLE
-            - DIGITAL_SIGNED
+            - NON_REMOTE
+            - REMOTE
+            - DIGITAL
         requestedDocuments:
           description:  |
             list of documents to be provided by the customer or actions to be performed by the customer and acknowledged by the financial institution \
@@ -1159,24 +1446,61 @@ components:
                 description: the name of the requested document; a.k.a. the label to be shown to the customer
                 type: string
                 example: "copie d'une carte d'identité avec photo"
+        isSalesSuspended:
+          description:  |
+            indicates if the product is to be sold or temporarily suspended
+          type: boolean
+          default:  false
+          example:  true
     ProductImplementationBase:
       description: >-
         this is the minimum set of parameters for a base product to be instantiated; the correlation between the attributes set and enforcement of their split toward the correct base administration should be done in the Order Management System. \
-          Here is just the definition of what has to be sent for a a Product Offering, per instantiation administration. \
-          Currently, most of the administrations are collecting the instantiation parameters from GRV tables. The 'fulfillmentConfigurationId' is the 'GRV-code'. Once the correct set of parameters is identified and agreed, the 'fulfillmentConfigurationId' will become obsolete and replaced with the actual set of parameters, giving the flexibility to separate between various instantiation administrations.
+          Here is just the definition of what has to be sent for a Product Offering, per instantiation administration. \
+          Currently, most of the administrations are collecting the instantiation parameters from GRV tables. The 'fulfillmentConfigurationId' is the 'GRV-code'. Once the correct set of parameters is identified and agreed upon, the 'fulfillmentConfigurationId' will become obsolete and be replaced with the actual set of parameters, giving the flexibility to separate between various instantiation administrations.
       type: object
       required: 
         - "fulfillmentConfigurationId"
         - "fulfillmentAdministration"
+      discriminator:
+        propertyName: fulfillmentAdministration
+        mapping:
+          CRC:  '#/components/schemas/CoreBankingFulfillmentParameters'
+          FRS:  '#/components/schemas/AccountingFulfillmentParameters'
+          GT: '#/components/schemas/BillingFulfillmentParameters'
+          RR: '#/components/schemas/InterestFulfillmentParameters'
+          APA: '#/components/schemas/BundlingFulfillmentParameters'
+          PIM:  '#/components/schemas/CashAndCardsFulfillmentParameters'
+          LIM:  '#/components/schemas/LimitsFulfillmentParameters'
       properties:
         fulfillmentAdministration:
-          description: the backend adminsitration that implements a subset of financial services and isntantiate (a part of) an agreement
+          description: |
+            the backend adminsitration that implements a subset of financial services and isntantiate (a part of) an agreement
+              - CRC = CoreBankingFulfillmentParameters
+              - FRS = AccountingFulfillmentParameters
+              - GT = BillingFulfillmentParameters
+              - RR = InterestFulfillmentParameters
+              - APA = BundlingFulfillmentParameters
+              - PIM = CashAndCardsFulfillmentParameters
+              - LIM = LimitsFulfillmentParameters
           type: string
+          enum:
+              - CRC
+              - FRS
+              - GT
+              - RR
+              - APA
+              - PIM
+              - LIM
           example: CRC
         fulfillmentConfigurationId:
           description: a minimal code needed by the fulfillment administration to be able to instantiate (a part of) an agreement
           type: string
           example: 42
+        fulfilmentConfigurationItems:
+          description: |
+            the configuration items required by the current backend administration; in this place only the configuration item ids will be shown, not the full definition
+          allOf:
+            - $ref: '#/components/schemas/Configuration'
     AccountingFulfillmentParameters:
       description: all the parameters needed to instantiate the product in Financial Accounting System (FRS)
       allOf:
@@ -1297,6 +1621,19 @@ components:
         $ref: '#/components/schemas/ConfigurationItem'
       minItems: 0
       maxItems: 150
+      example: 
+        - itemId: card.colour
+          valueType: STRING
+          defaultValue: RED
+          allowedValues:
+            - BLUE
+            - GREEN
+            - RED
+          isMandatory: false
+        - itemId: savings.rover_account
+          valueType: CONTRACT
+          isMandatory: true
+
     ConfigurationItem:
       description: a topic for which the customer have the option or is required to provide a value, it can be a date (e.g. predicted retirement date) or the IBAN of a rover account. Be advised, those configuration items are strictly related to the product definition and they are used for fulfillment or for offering realization, not necessarily related to user experience or order capture/processing flow
       type: object
@@ -1338,22 +1675,19 @@ components:
             - BE
             - LU
         defaultValue:
-          description: provides a value in case the user does not fill a value her/him-self; if a distinct set of values is allowed then the defualt value *must* be one of the values within the allowed set; its type must match the 'valueType'
+          description: |
+            provides a value in case the user does not fill a value her/him-self; if a distinct set of values is allowed then the defualt value *must* be one of the values within the allowed set; its type must match the 'valueType'
           type: string
           example: BE
         isMandatory:
-          description: a flag indicating if the current configuration item requires to return a value for the current product; in other words if the configuration item is mandatory for the fulfillment or ordering process; if a default value is provided for the current configuration item we recommend to keep this as false
+          description: |
+            a flag indicating if the current configuration item requires to return a value for the current product; in other words if the configuration item is mandatory for the fulfillment or ordering process; if a default value is provided for the current configuration item we recommend to keep this as false
           type: boolean
           default: false
       example: 
-        itemId: card.colour
-        valueType: STRING
-        defaultValue: RED
-        allowedValues:
-          - BLUE
-          - GREEN
-          - RED
-        isMandatory: false
+        itemId: savings.rover_account
+        valueType: CONTRACT
+        isMandatory: true
     ConfigurationValues:
       description: a full set of concrete values chosen by the customer or by the process _for_ the customer
       type: array
@@ -1376,6 +1710,11 @@ components:
           description: the desired value for the configuration item, to be checked against the set of allowed values or other rules. the value should match the value type defined for the configuration item
           type: string
           example: "Mr. Injection"
+tags:
+  - name: offering
+    description: Offering are products and services designed to deliver value to customers—either to fulfill their needs, satisfy their “wants,” or both. We discuss people's needs in other chapters. In this chapter, we discuss how marketing fills those needs through the creation and delivery of offerings.
+    externalDocs:
+      url: https://corporatefinanceinstitute.com/resources/management/products-and-services/
 externalDocs:
-  description: please read more about the requirements and solution
+  description: Please read more about the Daily Banking requirements and solution in Confluence
   url: https://confluence.int.abnamro.com/display/GT/Catalog+for+Commerce
