@@ -1,0 +1,537 @@
+openapi: 3.0.2
+info:
+  title: Daily Banking Products Combination Validation API
+  version: 1.0.0
+  description: >-
+    This API enables the consumer to validate a combination of Daily banking products.
+  contact:
+    name: Daily Banking Catalog One Administration
+    email: amdocs@nl.abnamro.com
+  x-apiType: 'enterprise'
+servers:
+  - url: https://aziag-tst.nl.eu.abnamro.com/daily-banking/products-combination-validation/v1
+    description: ST server
+  - url: https://aziag-acc.nl.eu.abnamro.com/daily-banking/products-combination-validation/v1
+    description: ET server
+  - url: https://aziag-prd.nl.eu.abnamro.com/daily-banking/products-combination-validation/v1
+    description: PR server
+paths:
+  /:
+    parameters:
+        - $ref: '#/components/parameters/Subject-Token-Type'
+        - $ref: '#/components/parameters/Subject-Token'
+        - $ref: '#/components/parameters/Consumer-Id'
+        - $ref: '#/components/parameters/Trace-Id'
+    post:
+      tags:
+        - products-combination-validation
+      operationId: validateDailyBankingProductsCombination
+      summary: This operation enables the consumer to validate a combination of products
+      description: >-
+        This operation enables the consumer to validate a combination of products
+      requestBody:
+        description: "the order details"
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: object
+              required:
+                - orderDetails
+                - orderingParty
+              properties:
+                orderDetails:
+                  $ref: "#/components/schemas/Order"
+                orderingParty:
+                  oneOf:
+                    - $ref: '#/components/schemas/Party'
+                    - $ref: '#/components/schemas/AgreementPartyCluster'
+                    - $ref: '#/components/schemas/ExternalCustomer'
+                  discriminator:
+                    propertyName: identificationType
+                    mapping:
+                      PARTY: '#/components/schemas/Party'
+                      AGREEMENT_PARTY_CLUSTER: '#/components/schemas/AgreementPartyCluster'
+                      EXTERNAL_CUSTOMER: '#/components/schemas/ExternalCustomer'
+
+            examples:
+
+              PARTY:
+                value:
+                  partyId: 987654
+                  orderingPartyIdentificationType: PARTY
+                  orderDetails:
+                    orderId: 7e38036d-1dd3-40c8-94a6-e0e041f11950
+                    products:
+                      - productId: 001249
+                        orderingItemId: de15a2d6-5184-497c-b25b-8f2665a4b9aa
+                        parentProductOrderingItemId: 3bb3159a-32a9-4ad8-a463-e895f156d395
+                        beneficiaryCustomer:
+                          beneficiaryIdentificationType: AGREEMENT_PARTY_CLUSTER
+                          agreementPartyClusterId: 7465334567
+                        configurationItems:
+                          - itemId: card.colour
+                            value: GREEN
+                      - productId: 001529
+                        parentProductOrderingItemId: 3bb3159a-32a9-4ad8-a463-e895f156d395
+                        beneficiaryCustomer:
+                          beneficiaryIdentificationType: AGREEMENT_PARTY_CLUSTER
+                          agreementPartyClusterId: 2531356245
+
+              AGREEMENT_PARTY_CLUSTER:
+                value:
+                  agreementPartyClusterId: 987654
+                  orderingPartyIdentificationType: AGREEMENT_PARTY_CLUSTER
+                  orderDetails:
+                    orderId: 7e38036d-1dd3-40c8-94a6-e0e041f11950
+                    products:
+                      - productId: 001249
+                        orderingItemId: de15a2d6-5184-497c-b25b-8f2665a4b9aa
+                        parentProductOrderingItemId: 3bb3159a-32a9-4ad8-a463-e895f156d395
+                        beneficiaryCustomer:
+                          agreementPartyClusterId: 987654
+                        configurationItems:
+                          - itemId: card.colour
+                            value: GREEN
+                      - productId: 001529
+                        parentProductOrderingItemId: 3bb3159a-32a9-4ad8-a463-e895f156d395
+                        beneficiaryCustomer:
+                          agreementPartyClusterId: 987654
+                  
+              EXTERNAL_CUSTOMER:
+                value:
+                  externalCustomerId: "ing:17fd7c5b-7ad1-47f8-b41e-b604184b3e5b"
+                  orderingPartyIdentificationType: EXTERNAL_CUSTOMER
+                  orderDetails:
+                    orderId: 7e38036d-1dd3-40c8-94a6-e0e041f11950
+                    products:
+                      - productId: 001249
+                        orderingItemId: de15a2d6-5184-497c-b25b-8f2665a4b9aa
+                        parentProductOrderingItemId: 3bb3159a-32a9-4ad8-a463-e895f156d395
+                        beneficiaryCustomer:
+                          beneficiaryIdentificationType: PARTY
+                          partyId: 987654
+                        configurationItems:
+                          - itemId: card.colour
+                            value: GREEN
+                      - productId: 001529
+                        parentProductOrderingItemId: 3bb3159a-32a9-4ad8-a463-e895f156d395
+                        beneficiaryCustomer:
+                          beneficiaryIdentificationType: AGREEMENT_PARTY_CLUSTER
+                          agreementPartyClusterId: 987654
+                  
+
+      responses:
+        204:
+          description: |
+            eligible
+            ---
+            
+            customer is eligible for the requested offering;\
+              no further content is provided
+        400:
+          description: |
+            not eligible
+            ---
+            
+            returned in one of the situations below; please check the error message for details: 
+              - NOT_ELIGIBLE_DUE_TO_CUSTOMER_STATUS
+                > the customer % is not eligible for the product with orderItemId % due to his/her validation status
+              - NOT_ELIGIBLE_DUE_TO_CUSTOMER_RINGFENCING
+                > the customer % is ringfenced hence not eligible for the product with orderItemId %
+              - NOT_ELIGIBLE_DUE_TO_RELATION_CATEGORY
+                > the external customer is not eligible for the product with orderItemId % 
+              - NOT_ELIGIBLE_DUE_TO_MISSING_CURRENT_ACCOUNT
+                > the customer % is not eligible for the product with orderItemId % for s/he does not own a counter account with ABN-AMRO
+              - NOT_ELIGIBLE_DUE_TO_RISK_SCORE
+                > the customer % is not eligible for the product with orderItemId % due to his/her risk score
+              - NOT_ELIGIBLE_DUE_TO_CLIENT_GROUP_CODE
+                > the customer % is not eligible for the product with orderItemId % due to his/her CGC
+              - NOT_ELIGIBLE_DUE_TO_AGE
+                > the customer % is not eligible for the product with orderItemId % due to his/her age
+              - NOT_ELIGIBLE_DUE_TO_COUNTRY_RESTTRICTIONS
+                > the product with orderItemId % cannot be sold to customer % due to country restrictions
+              - NOT_ELIGIBLE_DUE_TO_TOO_MANY_PRODUCTS
+                > the customer % has already the maximum number of allowed products %
+              - PARTY_NOT_FOUND
+                > the customer identified by partyId % cannot be found in the operational data 
+              - AGREEMENT_PARTY_CLUSTER_NOT_FOUND
+                > the customer identified by agreementPartyClusterId % cannot be found in the operational data 
+              - EXTERNAL_CUSTOMER_NOT_FOUND
+                > the external customer % cannot be found in the external system 
+              - PARTY_PARAMETERS_MISSING
+                > the parameters for the customer identified by partyId % are insufficient for assessing the eligibility 
+              - AGREEMENT_PARTY_CLUSTER_PARAMETERS_MISSING
+                > the parameters of the customer identified by agreementPartyClusterId % are insufficient for assessing the eligibility 
+              - EXTERNAL_CUSTOMER_PARAMETERS_MISSING
+                > the parameters of the external customer % are insufficient for assessing the eligibility 
+              - PRODUCT_CONFIGURATION_INVALID
+                > the configuration for product with orderItemId % is not valid
+              - INSUFFICIENT_DATA
+                > some of the downstream systems do not respond and the validity of the offering cannot be assessed w/o the related data
+              - ORDER_ID_MISSING
+                > the mandatory field orderId is missing
+              - ORDER_ITEM_ID_MISSING
+                > the mandatory field orderItemId is missing for product at position %
+              - PRODUCT_ID_MISSING
+                > the mandatory field productId is missing for product with orderItemId %
+              - CUSTOMER_IDENTIFICATION_MISSING
+                > the mandatory field for customer identification is missing for product with orderItemId %
+              - ORDER_CUSTOMER_IDENTIFICATION_MISSING
+                > the order customer identification is missing for the order with id %
+              - PARTY_ID_INVALID
+                > The partyId is invalid.
+              - PARTY_ID_LENGTH_EXCEEDED
+                > The partyId is exceeding the maximum field length of 12 digits.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+
+              examples:
+                AGREEMENT_PARTY_CLUSTER_NOT_ELIGIBLE:
+                  value:
+                    errors:
+                      - code: NOT_ELIGIBLE_DUE_TO_TOO_MANY_PRODUCTS
+                        message: "the customer % has already the maximum number of allowed products % %"
+                        traceId: 924bd142-6514-445c-9e01-486820d94263
+                        params: 
+                          - 349876
+                          - "de15a2d6-5184-497c-b25b-8f2665a4b9aa"
+                        status: 400
+                PRODUCT_ID_MISSING:
+                  value:
+                    errors:
+                      - code: PRODUCT_ID_MISSING
+                        message: the mandatory field productId is missing for product with orderItemId %.
+                        traceId: 924bd142-6514-445c-9e01-486820d94263
+                        params:
+                          - "de15a2d6-5184-497c-b25b-8f2665a4b9aa"
+                        status: 400
+                       
+
+
+        401:
+          description: |
+            "Authorization Error"
+
+            Detailed Error List: 
+            ---
+            - SUBJECT_TOKEN_INVALID
+              > Valid subject-token is required.
+            - SUBJECT_TOKEN_MISSING
+              > The Subject-Token header is required.
+            - SUBJECT_TOKEN_TYPE_INVALID
+              > The Subject-Token-Type header should be 'MSEC'.
+            - SUBJECT_TOKEN_TYPE_MISSING
+              > The Subject-Token-Type header is required.
+            - SUBJECT_UNAUTHENTICATED
+              > The subject is not authenticated
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          content: 
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+              example:
+                  {
+                   errors: [
+                             {
+                              "code": "SUBJECT_TOKEN_MISSING",
+                              "message": "The Subject Token header is required.",
+                              "traceId": "924bd142-6514-445c-9e01-486820d94263",
+                              "status": 401
+                             }
+                           ]
+                  }
+        403:
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          description: |
+            "Access Forbidden"
+
+            Detailed Error List: 
+            ---
+            - SUBJECT_NOT_ALLOWED
+              > The Subject (End User) is not allowed to use the specific operation.
+          content: 
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ApplicationCustomError"
+              example:
+                  {
+                   errors: [
+                             {
+                              "code": "SUBJECT_NOT_ALLOWED",
+                              "message": "The Subject (End User) is not allowed to use the validate daily banking products combination operation.",
+                              "traceId": "6be9522f-ff5f-4932-8243-66c154880a1a",
+                              "status": 403
+                             }
+                           ]
+                  }
+        500:
+          description: >-
+            An unexpected error has occurred. The error has been logged and is being investigated.
+          headers:
+            Trace-Id:
+              $ref: '#/components/headers/Trace-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationCustomError'
+              example:
+                  {
+                   errors: [
+                             {
+                              "code": "INTERNAL_SERVER_ERROR",
+                              "message": "The server made a Boo-Boo!",
+                              "traceId": "6be9522f-ff5f-4932-8243-66c154880a1a",
+                              "status": 500
+                             }
+                           ]
+                  }
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  headers:
+    Consumer-Id:
+      description: "Unique value for consumer application calling the API "
+      schema:
+        type: string
+      example: "DCPB"
+    Trace-Id:
+      description: "Unique end-2-end trace id received from the consumer"
+      schema:
+        type: string
+      example: "16258284-86af-4d65-8cc9-6b4a471f0207"
+  parameters:
+    Subject-Token-Type:
+      description: specifies the authorisation mechanism
+      in: header
+      name: Subject-Token-Type
+      schema: 
+        type: string
+        enum:
+          - MSEC
+          - ENTERPRISE_TOKEN
+      example: MSEC
+    Subject-Token:
+      name: Subject-Token
+      in: header
+      description: the consumer security token
+      schema: 
+        type: string
+      example: "VGhpcyBpcyBhIG5pY2UgdGV4dCBlbmNvZGVkIGluIEJhc2U2NA=="
+    Trace-Id:
+      name: Trace-Id
+      description: "Unique end-2-end trace id received from the consumer"
+      in: header
+      schema:
+        $ref: "#/components/headers/Trace-Id"
+    Consumer-Id:
+      name: Consumer-Id
+      description: "Unique value for consumer application calling the API "
+      in: header
+      schema:
+        $ref: "#/components/headers/Consumer-Id"
+  responses:
+    ServerErrors:
+      description: |
+        " Internal server error "
+
+        Detailed Error List:
+        ---
+        - INTERNAL_SERVER_ERROR
+          > Internal server error occurred
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApplicationCustomError'
+          example:
+            {
+              errors: [
+              {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "Internal server error occurred",
+                "traceId": "XX1234",
+                "status": 500
+              }
+              ]
+            }
+  schemas:
+    IdentificationType:
+      description: |
+        discriminator for the identification of the customer
+          - PARTY
+            use the Party class
+          - AGREEMENT_PARTY_CLUSTER
+            use the AgreementPartyCluster class
+          - EXTERNAL_CUSTOMER
+            use the ExternalCustomer class
+      type: string
+      enum: 
+        - PARTY
+        - AGREEMENT_PARTY_CLUSTER
+        - EXTERNAL_CUSTOMER
+      default: AGREEMENT_PARTY_CLUSTER
+    Customer:
+      type: object
+      required: 
+        - identificationType
+      properties:
+        identificationType:
+          $ref: '#/components/schemas/IdentificationType'
+    Party:
+      description: customer identified as party in the Party system
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Customer'
+      required:
+        - partyId
+      properties:
+        partyId:
+          description: the identifier within the party system
+          type: integer
+          format: int64
+          example: 98765
+    AgreementPartyCluster:
+      description: logical customer identified as agreement holder in the Party system
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Customer'
+      required:
+        - agreementPartyClusterId
+      properties:
+        agreementPartyClusterId:
+          description: the identifier of the agreement party cluster within the party system
+          type: integer
+          format: int64
+          example: 234567890
+    ExternalCustomer:
+      description: logical customer identified at an external business partner
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Customer'
+      required:
+        - externalCustomerId
+      properties:
+        externalCustomerId:
+          description: the identifier in the external system
+          type: string
+          example: 'e3d557ed-3140-473a-ab68-dac6ed2e7029'
+
+    ApplicationCustomError:
+      type: object
+      required: 
+        - "errors"
+      properties:
+        errors:
+          type: array
+          minItems: 1 
+          maxItems: 5
+          description: List of application errors.
+          items:
+            $ref: '#/components/schemas/ErrorItem'
+    ErrorItem:
+      type: object
+      required:
+         - "code"
+         - "message"
+         - "status"
+      properties:
+        status:
+          type: integer
+          description: unique status code identifying the type of the isse. Can be filled with the HTTP status code, for example.
+        code:
+          type: string
+          description: Application internal error code.
+        traceId:
+          type: string
+          description: Application internal error trace Id.
+        message:
+          type: string
+          description: Error message, descriptive for the investigating party. For example for consumer error it should hint where the request could change to get a successful response.
+      description: List of application errors.
+    Order:
+      type: object
+      required:
+        - "orderId"
+        - "products"
+      properties:
+        orderId:
+          description: the identification of the order; this helps subsequent calls to Order Management System APIs
+          type: string
+          example: '7e38036d-1dd3-40c8-94a6-e0e041f11950'
+        products:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/Product'
+    Product:
+      description: full commercial info about the product offering with the given ID
+      type: object
+      required: 
+        - "productId"
+        - "orderItemId"
+      properties:
+        productId:
+          description: the product offering identification
+          type: string
+          example: '001249'
+        orderItemId:
+          description: unique identifier of the product offer instance within the order (basket)
+          type: string
+          example: 'de15a2d6-5184-497c-b25b-8f2665a4b9aa'
+        parentProductOrderingId:
+          description: a mean to keep the relation between the bundled product and the encapsulating bundle
+          type: string
+          example: '3bb3159a-32a9-4ad8-a463-e895f156d395'
+        beneficiaryIdentificationType:
+          $ref: '#/components/schemas/IdentificationType'
+        beneficiaryCustomer:
+          oneOf:
+            - $ref: '#/components/schemas/Party'
+            - $ref: '#/components/schemas/AgreementPartyCluster'
+            - $ref: '#/components/schemas/ExternalCustomer'
+          discriminator:
+            propertyName: beneficiaryIdentificationType
+            mapping:
+              PARTY: '#/components/schemas/Party'
+              AGREEMENT_PARTY_CLUSTER: '#/components/schemas/AgreementPartyCluster'
+              EXTERNAL_CUSTOMER: '#/components/schemas/ExternalCustomer'
+        configurationItems:
+          $ref: '#/components/schemas/Configuration'
+    Configuration:
+      description: a collection of configuration items that makes sense (can be addressed) together
+      type: array
+      items:
+        $ref: '#/components/schemas/ConfigurationItem'
+      minItems: 0
+      maxItems: 150
+    ConfigurationItem:
+      type: object
+      required:
+        - itemId
+      properties:
+        itemId:
+          description: the identifier for the configuration item
+          type: string
+          example: 'card.name_on_card'
+        value:
+          description: the value chosen (by customer or by channel) for the current configuration item.
+          type: string
+          example: 'V. Srinivas'
+      example: 
+        itemId: card.colour
+        value: GREEN
+externalDocs:
+  description: please read more about the requirements and solution
+  url: https://confluence.int.abnamro.com/display/GT/Catalog+for+Commerce
