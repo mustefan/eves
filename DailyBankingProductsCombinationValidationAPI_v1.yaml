@@ -1,4 +1,4 @@
-openapi: 3.0.2
+openapi: 3.0.0
 info:
   title: Daily Banking Products Combination Validation API
   version: 1.0.0
@@ -494,15 +494,13 @@ components:
           description: a mean to keep the relation between the bundled product and the encapsulating bundle
           type: string
           example: '3bb3159a-32a9-4ad8-a463-e895f156d395'
-        beneficiaryIdentificationType:
-          $ref: '#/components/schemas/IdentificationType'
         beneficiaryCustomer:
           oneOf:
             - $ref: '#/components/schemas/Party'
             - $ref: '#/components/schemas/AgreementPartyCluster'
             - $ref: '#/components/schemas/ExternalCustomer'
           discriminator:
-            propertyName: beneficiaryIdentificationType
+            propertyName: identificationType
             mapping:
               PARTY: '#/components/schemas/Party'
               AGREEMENT_PARTY_CLUSTER: '#/components/schemas/AgreementPartyCluster'
